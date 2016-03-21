@@ -20,26 +20,27 @@ import os, sys
 
 from gprMax.exceptions import CmdInputError
 from gprMax.utilities import ListStream
+from gprMax.constants import c, e0, m0, z0, floattype
 
 
 def python_code_blocks(inputfile, usernamespace):
     """Looks for and processes any Python code found in the input file. It will ignore any lines that are comments, i.e. begin with a double hash (##), and any blank lines. It will also ignore any lines that do not begin with a hash (#) after it has processed Python commands.
-        
+
     Args:
         inputfile (str): Name of the input file to open.
         usernamespace (dict): Namespace that can be accessed by user in any Python code blocks in input file.
-        
+
     Returns:
         processedlines (list): Input commands after Python processing.
     """
-        
+
     with open(inputfile, 'r') as f:
         # Strip out any newline characters and comments that must begin with double hashes
         inputlines = [line.rstrip() for line in f if(not line.startswith('##') and line.rstrip('\n'))]
-        
+
     # List to hold final processed commands
     processedlines = []
-    
+
     x = 0
     while(x < len(inputlines)):
         if(inputlines[x].startswith('#python:')):
@@ -58,13 +59,13 @@ def python_code_blocks(inputfile, usernamespace):
             sys.stdout = codeout = ListStream()
             # Execute code block & make available only usernamespace
             exec(pythoncompiledcode, usernamespace)
-            
+
             # Now strip out any lines that don't begin with a hash command
             codeproc = [line + ('\n') for line in codeout.data if(line.startswith('#'))]
-            
+
             # Add processed Python code to list
             processedlines.extend(codeproc)
-    
+
         elif(inputlines[x].startswith('#')):
             # Add gprMax command to list
             inputlines[x] += ('\n')
@@ -73,20 +74,51 @@ def python_code_blocks(inputfile, usernamespace):
         x += 1
 
     sys.stdout = sys.__stdout__ # Reset stdio
-    
+
     return processedlines
 
+def compile_user_input_file(model_params):
+
+    input_file = model_params['inputfile']
+
+    # Process the input file
+    inputdirectory = os.path.dirname(os.path.abspath(input_file)) + os.sep
+    inputfile = inputdirectory + os.path.basename(input_file)
+
+    # Provide a namespace that any scripted elements in the input file
+    # can access
+    usernamespace = {'c': c, 'e0': e0, 'm0': m0, 'z0': z0,
+        'number_model_runs': model_params['n'],
+        'inputdirectory': inputdirectory
+    }
+
+    # If Taguchi optimistaion, add specific value for each parameter to optimise for each experiment to user accessible namespace
+    if model_params.get('optparams'):
+        tmp = {}
+        tmp.update((key, value[model_params['model_run'] - 1]) for key, value in optparams.items())
+        usernamespace.update({'optparams': tmp})
+
+    # Process any user input Python commands
+    processedlines = python_code_blocks(inputfile, usernamespace)
+
+    # Write a file containing the input commands after Python blocks have been processed
+    if model_params.get('write_python'):
+        write_python_processed(inputfile, modelrun, model_params['n'], processedlines)
+
+    compiled = ''.join(processedlines)
+
+    return compiled
 
 def write_python_processed(inputfile, modelrun, numbermodelruns, processedlines):
     """Writes input commands to file after Python processing.
-        
+
     Args:
         inputfile (str): Name of the input file to open.
         modelrun (int): Current model run number.
         numbermodelruns (int): Total number of model runs.
         processedlines (list): Input commands after Python processing.
     """
-    
+
     if numbermodelruns == 1:
         processedfile = os.path.splitext(inputfile)[0] + '_proc.in'
     else:
@@ -101,10 +133,10 @@ def write_python_processed(inputfile, modelrun, numbermodelruns, processedlines)
 
 def check_cmd_names(processedlines):
     """Checks the validity of commands, i.e. are they gprMax commands, and that all essential commands are present.
-        
+
     Args:
         processedlines (list): Input commands after Python processing.
-        
+
     Returns:
         singlecmds (dict): Commands that can only occur once in the model.
         multiplecmds (dict): Commands that can have multiple instances in the model.
@@ -120,12 +152,12 @@ def check_cmd_names(processedlines):
 
     # Commands that there can be multiple instances of in a model - these will be lists within the dictionary
     multiplecmds = {key: [] for key in ['#geometry_view', '#material', '#soil_peplinski', '#add_dispersion_debye', '#add_dispersion_lorentz', '#add_dispersion_drude', '#waveform', '#voltage_source', '#hertzian_dipole', '#magnetic_dipole', '#transmission_line', '#rx', '#rx_box', '#snapshot', '#pml_cfs']}
-    
+
     # Geometry object building commands that there can be multiple instances of in a model - these will be lists within the dictionary
     geometrycmds = ['#xdmf_geometry_file', '#edge', '#plate', '#triangle', '#box', '#sphere', '#cylinder', '#cylindrical_sector', '#fractal_box', '#add_surface_roughness', '#add_surface_water', '#add_grass']
     # List to store all geometry object commands in order from input file
     geometry = []
-    
+
     # Check if command names are valid, if essential commands are present, and add command parameters to appropriate dictionary values or lists
     countessentialcmds = 0
     lindex = 0
@@ -140,22 +172,22 @@ def check_cmd_names(processedlines):
         # Count essential commands
         if cmdname in essentialcmds:
             countessentialcmds += 1
-        
+
         # Assign command parameters as values to dictionary keys
         if cmdname in singlecmds:
             if singlecmds[cmdname] == 'None':
                 singlecmds[cmdname] = cmd[1].strip(' \t\n')
             else:
                 raise CmdInputError('You can only have one ' + cmdname + ' commmand in your model')
-                    
+
         elif cmdname in multiplecmds:
             multiplecmds[cmdname].append(cmd[1].strip(' \t\n'))
 
         elif cmdname in geometrycmds:
             geometry.append(processedlines[lindex].strip(' \t\n'))
-          
+
         lindex += 1
-                
+
     if (countessentialcmds < len(essentialcmds)):
         raise CmdInputError('Your input file is missing essential gprMax commands required to run a model. Essential commands are: ' + ', '.join(essentialcmds))
 

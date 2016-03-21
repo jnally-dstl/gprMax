@@ -42,13 +42,6 @@ packagename = gprMax.__name__
 # Package version
 version = gprMax.__version__
 
-# Process 'install' command line argument
-if 'install' in sys.argv:
-    print("'install' is not required for this package, running 'build_ext --inplace' instead.")
-    sys.argv.remove('install')
-    sys.argv.append('build_ext')
-    sys.argv.append('--inplace')
-
 # Process 'build' command line argument
 if 'build' in sys.argv:
     print("'build' is not required for this package, running 'build_ext --inplace' instead.")
@@ -69,6 +62,7 @@ for root, dirs, files in os.walk(os.path.join(os.getcwd(), packagename)):
     for file in files:
         if file.endswith('.pyx'):
             cythonfiles.append(os.path.join(packagename, file))
+print(cythonfiles)
 for root, dirs, files in os.walk(os.path.join(os.getcwd(), 'user_libs')):
     for file in files:
         if file.endswith('.pyx'):
@@ -117,7 +111,7 @@ elif sys.platform == 'darwin':
     compile_args = ['-O3', '-w', '-fstrict-aliasing', '-fno-common', '-fopenmp']
     linker_args = ['-fopenmp']
     extra_objects = []
-    
+
     # If user is cwarren do static linking as this is for binaries uploaded to GitHub
 #    if os.getlogin() == 'cwarren':
 #        linker_args = ['-static-libgcc']
