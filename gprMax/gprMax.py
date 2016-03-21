@@ -38,6 +38,7 @@ from gprMax.writer_hdf5 import prepare_hdf5, write_hdf5
 from gprMax.pml import build_pmls, update_electric_pml, update_magnetic_pml
 from gprMax.utilities import update_progress, logo, human_size
 from gprMax.yee_cell_build import build_electric_components, build_magnetic_components
+from ._version import __version__
 
 def run(**kwargs):
     """
@@ -72,6 +73,9 @@ def main():
     parser.add_argument('--opt-taguchi', action='store_true', default=False, help='optimise parameters using the Taguchi optimisation method')
     args = parser.parse_args()
 
+    # Print gprMax logo, version, and licencing/copyright information
+    logo(__version__ + ' (Bowmore)')
+
     # Cast namespace object as a dict
     model_params = vars(args)
 
@@ -100,9 +104,6 @@ def run_main(model_params):
         usernamespace (dict): Namespace that can be accessed by user in any Python code blocks in input file.
         optparams (dict): Optional argument. For Taguchi optimisation it provides the parameters to optimise and their values.
     """
-
-    # Print gprMax logo, version, and licencing/copyright information
-    logo(gprMax.__version__ + ' (Bowmore)')
 
     n = model_params['n']
 
@@ -277,8 +278,6 @@ def run_model(model_params):
 
     processedlines = model_params['input'].split('\n')[:-1]
 
-    print(processedlines)
-
     # Monitor memory usage
     p = psutil.Process()
 
@@ -291,7 +290,7 @@ def run_model(model_params):
     singlecmds, multicmds, geometry = check_cmd_names(processedlines)
 
     # Process parameters for commands that can only occur once in the model
-    process_singlecmds(singlecmds, multicmds, G)
+    process_singlecmds(singlecmds, G)
 
     # Process parameters for commands that can occur multiple times in the model
     process_multicmds(multicmds, G)
