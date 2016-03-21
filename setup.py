@@ -161,6 +161,7 @@ setup(name=packagename,
       url='http://www.gprmax.com',
       description='Electromagnetic Modelling Software based on the Finite-Difference Time-Domain (FDTD) method',
       license='GPLv3+',
+      packages=[packagename],
       classifiers=[
                    'Environment :: Console',
                    'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
