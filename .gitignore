@@ -13,8 +13,14 @@
 # Build directory
 build/
 
+# Dist
+dist/
+
 # Backup files
 *~
 
 # Hidden files
 .*
+
+gprMax.egg-info/
+
